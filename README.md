@@ -5,7 +5,7 @@ A high-performance flash sale system built in Go for selling exactly 10,000 item
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Go 1.20+
+- Go 1.24.3+
 - Docker Desktop
 - Git
 
@@ -281,14 +281,6 @@ docker-compose up -d
 go run cmd/server/main.go
 ```
 
-## 📊 Performance Targets
-
-- **Throughput**: >1,000 requests/second
-- **Checkout Response**: <50ms
-- **Purchase Response**: <100ms  
-- **Memory Usage**: <500MB under load
-- **Concurrency**: 1,000+ concurrent users
-
 ## 🛑 Stopping Services
 
 **Stop the server:** `Ctrl+C`
@@ -302,14 +294,3 @@ docker-compose down
 ```bash
 docker-compose down -v
 ```
-
-## 🏆 Contest Optimization
-
-This system is optimized for programming contests with:
-- **Minimal dependencies** (only 3 external packages)
-- **Standard library HTTP** (no frameworks)
-- **Atomic Redis operations** (race condition free)
-- **Prepared SQL statements** (high performance)
-- **Connection pooling** (optimized for load)
-
-Perfect for demonstrating Go expertise and system design skills! 🚀 

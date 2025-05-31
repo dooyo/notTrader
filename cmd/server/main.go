@@ -14,12 +14,30 @@ import (
 	"flash-sale-backend/internal/services"
 )
 
+// getEnv returns environment variable value or default if not set
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
 func main() {
 	ctx := context.Background()
 	
+	// Configuration from environment variables
+	postgresURL := getEnv("POSTGRES_URL", "postgres://postgres:password@localhost:5432/flashsale?sslmode=disable")
+	redisURL := getEnv("REDIS_URL", "localhost:6379")
+	serverPort := getEnv("SERVER_PORT", "8080")
+	
+	log.Printf("Starting with configuration:")
+	log.Printf("  PostgreSQL: %s", postgresURL)
+	log.Printf("  Redis: %s", redisURL)
+	log.Printf("  Server Port: %s", serverPort)
+	
 	// Initialize database connections
 	log.Println("Initializing PostgreSQL connection...")
-	pgDB, err := database.NewPostgresDB("postgres://postgres:password@localhost:5432/flashsale?sslmode=disable")
+	pgDB, err := database.NewPostgresDB(postgresURL)
 	if err != nil {
 		log.Printf("Warning: PostgreSQL connection failed: %v", err)
 		log.Println("Server will start but database operations will fail until PostgreSQL is available")
@@ -27,7 +45,7 @@ func main() {
 	}
 	
 	log.Println("Initializing Redis connection...")
-	redisClient, err := database.NewRedisClient("localhost:6379", "", 0)
+	redisClient, err := database.NewRedisClient(redisURL, "", 0)
 	if err != nil {
 		log.Printf("Warning: Redis connection failed: %v", err)
 		log.Println("Server will start but Redis operations will fail until Redis is available")
@@ -83,7 +101,7 @@ func main() {
 
 	// Configure HTTP server
 	server := &http.Server{
-		Addr:              ":8080",
+		Addr:              ":" + serverPort,
 		Handler:           mux,
 		ReadTimeout:       5 * time.Second,
 		WriteTimeout:      10 * time.Second,
@@ -106,7 +124,7 @@ func main() {
 
 	// Start server in goroutine
 	go func() {
-		log.Printf("Flash sale server starting on :8080")
+		log.Printf("Flash sale server starting on :%s", serverPort)
 		log.Println("Available endpoints:")
 		log.Println("  GET  /        - API information")
 		log.Println("  GET  /health  - Health check")

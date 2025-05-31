@@ -5,57 +5,94 @@ A high-performance flash sale system built in Go for selling exactly 10,000 item
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Go 1.24.3+
-- Docker Desktop
-- Git
+- Docker and Docker Compose installed
+- Ports 8080, 5432, 6379 available
 
-### 1. Setup Databases
+### 1. Start the Complete Stack
 
 ```bash
-# Start PostgreSQL and Redis
-docker-compose up -d
+# Start all services (app + databases)
+docker-compose up --build -d
 
-# Wait for databases to be ready (check with)
-docker ps
+# Check status
+docker-compose ps
+
+# View logs
+docker-compose logs -f app
 ```
 
-### 2. Start the Server
+### 2. Test the API
 
 ```bash
+# Health check
+curl http://localhost:8080/health
+
+# API information
+curl http://localhost:8080/
+
+# Test checkout
+curl -X POST "http://localhost:8080/checkout?user_id=user1&item_id=item1"
+
+# Test purchase (use the checkout_code from above response)
+curl -X POST "http://localhost:8080/purchase" \
+  -H "Content-Type: application/json" \
+  -d '{"checkout_code":"CHK_abc123_456"}'
+```
+
+### 3. Stop Services
+
+```bash
+# Stop all services
+docker-compose down
+
+# Stop and remove data volumes
+docker-compose down -v
+```
+
+## 🛠️ Development Commands
+
+### Building
+
+```bash
+# Build Docker image only
+docker build -t flashsale-backend:latest .
+
+# Build and start complete stack
+docker-compose up --build -d
+```
+
+### Local Development
+
+```bash
+# Start databases only
+docker-compose up -d postgres redis
+
+# Run Go app directly (for development)
+go run cmd/server/main.go
+
+# Run with custom environment
+POSTGRES_URL="postgres://postgres:password@localhost:5432/flashsale?sslmode=disable" \
+REDIS_URL="localhost:6379" \
+SERVER_PORT="8080" \
 go run cmd/server/main.go
 ```
 
-You should see output like:
-```
-2025/05/31 14:58:53 Initializing PostgreSQL connection...
-2025/05/31 14:58:53 Initializing Redis connection...
-2025/05/31 14:58:53 Starting background sale manager...
-2025/05/31 14:58:53 Flash sale server starting on :8080
-2025/05/31 14:58:53 Found active sale 1
-```
+### Monitoring
 
-### 3. Test the API
-
-**Health Check**
 ```bash
-curl http://localhost:8080/health
-```
+# View all logs
+docker-compose logs -f
 
-**API Information**
-```bash
-curl http://localhost:8080/
-```
+# View specific service logs
+docker-compose logs -f app
+docker-compose logs -f postgres
+docker-compose logs -f redis
 
-**Create Checkout Code**
-```bash
-curl -X POST "http://localhost:8080/checkout?user_id=user1&item_id=item1"
-```
+# Check container status
+docker-compose ps
 
-**Complete Purchase**
-```bash
-curl -X POST "http://localhost:8080/purchase" \
-  -H "Content-Type: application/json" \
-  -d '{"checkout_code": "CHK_219b6c54_5175"}'
+# Monitor resource usage
+docker stats
 ```
 
 ## 📖 API Documentation

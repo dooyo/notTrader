@@ -21,9 +21,6 @@ type PostgresDB struct {
 	createCheckoutAttemptStmt      *sql.Stmt
 	getCheckoutByCodeStmt          *sql.Stmt
 	updateCheckoutPurchasedStmt    *sql.Stmt
-	getUserSaleCountStmt           *sql.Stmt
-	incrementUserSaleCountStmt     *sql.Stmt
-	createUserSaleCountStmt        *sql.Stmt
 }
 
 // NewPostgresDB creates a new PostgreSQL database connection
@@ -99,34 +96,6 @@ func (p *PostgresDB) prepareStatements() error {
 		return fmt.Errorf("failed to prepare updateCheckoutPurchased statement: %w", err)
 	}
 
-	// Get user sale count statement
-	p.getUserSaleCountStmt, err = p.db.Prepare(`
-		SELECT id, user_id, sale_id, purchase_count, created_at, updated_at 
-		FROM user_sale_counts 
-		WHERE user_id = $1 AND sale_id = $2`)
-	if err != nil {
-		return fmt.Errorf("failed to prepare getUserSaleCount statement: %w", err)
-	}
-
-	// Increment user sale count statement
-	p.incrementUserSaleCountStmt, err = p.db.Prepare(`
-		UPDATE user_sale_counts 
-		SET purchase_count = purchase_count + 1 
-		WHERE user_id = $1 AND sale_id = $2 
-		RETURNING purchase_count`)
-	if err != nil {
-		return fmt.Errorf("failed to prepare incrementUserSaleCount statement: %w", err)
-	}
-
-	// Create user sale count statement
-	p.createUserSaleCountStmt, err = p.db.Prepare(`
-		INSERT INTO user_sale_counts (user_id, sale_id, purchase_count, created_at) 
-		VALUES ($1, $2, 1, NOW()) 
-		RETURNING id, created_at`)
-	if err != nil {
-		return fmt.Errorf("failed to prepare createUserSaleCount statement: %w", err)
-	}
-
 	return nil
 }
 
@@ -144,15 +113,6 @@ func (p *PostgresDB) Close() error {
 	}
 	if p.updateCheckoutPurchasedStmt != nil {
 		p.updateCheckoutPurchasedStmt.Close()
-	}
-	if p.getUserSaleCountStmt != nil {
-		p.getUserSaleCountStmt.Close()
-	}
-	if p.incrementUserSaleCountStmt != nil {
-		p.incrementUserSaleCountStmt.Close()
-	}
-	if p.createUserSaleCountStmt != nil {
-		p.createUserSaleCountStmt.Close()
 	}
 
 	return p.db.Close()
@@ -310,49 +270,6 @@ func (p *PostgresDB) UpdateCheckoutAttemptPurchased(ctx context.Context, code st
 	return nil
 }
 
-// User purchase tracking
-func (p *PostgresDB) GetUserSaleCount(ctx context.Context, userID string, saleID int) (*models.UserSaleCount, error) {
-	count := &models.UserSaleCount{}
-
-	err := p.getUserSaleCountStmt.QueryRowContext(ctx, userID, saleID).Scan(
-		&count.ID, &count.UserID, &count.SaleID, &count.PurchaseCount,
-		&count.CreatedAt, &count.UpdatedAt)
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil // User has no purchases for this sale
-		}
-		return nil, fmt.Errorf("failed to get user sale count: %w", err)
-	}
-
-	return count, nil
-}
-
-func (p *PostgresDB) IncrementUserSaleCount(ctx context.Context, userID string, saleID int) error {
-	var newCount int
-
-	err := p.incrementUserSaleCountStmt.QueryRowContext(ctx, userID, saleID).Scan(&newCount)
-	if err != nil {
-		return fmt.Errorf("failed to increment user sale count: %w", err)
-	}
-
-	return nil
-}
-
-func (p *PostgresDB) CreateUserSaleCount(ctx context.Context, userID string, saleID int) error {
-	var id int
-	var createdAt time.Time
-
-	err := p.createUserSaleCountStmt.QueryRowContext(ctx, userID, saleID).
-		Scan(&id, &createdAt)
-
-	if err != nil {
-		return fmt.Errorf("failed to create user sale count: %w", err)
-	}
-
-	return nil
-}
-
 // Transaction support
 func (p *PostgresDB) BeginTx(ctx context.Context) (interfaces.TxInterface, error) {
 	tx, err := p.db.BeginTx(ctx, nil)
@@ -485,39 +402,3 @@ func (t *PostgresTx) UpdateCheckoutAttemptPurchased(ctx context.Context, code st
 	return nil
 }
 
-func (t *PostgresTx) GetUserSaleCount(ctx context.Context, userID string, saleID int) (*models.UserSaleCount, error) {
-	query := `
-		SELECT id, user_id, sale_id, purchase_count, created_at, updated_at 
-		FROM user_sale_counts 
-		WHERE user_id = $1 AND sale_id = $2 FOR UPDATE`
-
-	count := &models.UserSaleCount{}
-	err := t.tx.QueryRowContext(ctx, query, userID, saleID).Scan(
-		&count.ID, &count.UserID, &count.SaleID, &count.PurchaseCount,
-		&count.CreatedAt, &count.UpdatedAt)
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil // User has no purchases for this sale
-		}
-		return nil, fmt.Errorf("failed to get user sale count in transaction: %w", err)
-	}
-
-	return count, nil
-}
-
-func (t *PostgresTx) IncrementUserSaleCount(ctx context.Context, userID string, saleID int) error {
-	query := `
-		UPDATE user_sale_counts 
-		SET purchase_count = purchase_count + 1 
-		WHERE user_id = $1 AND sale_id = $2 
-		RETURNING purchase_count`
-
-	var newCount int
-	err := t.tx.QueryRowContext(ctx, query, userID, saleID).Scan(&newCount)
-	if err != nil {
-		return fmt.Errorf("failed to increment user sale count in transaction: %w", err)
-	}
-
-	return nil
-} 

@@ -38,20 +38,6 @@ CREATE TABLE checkout_attempts (
     CONSTRAINT chk_checkout_status CHECK (status IN ('pending', 'used', 'expired'))
 );
 
--- User sale counts for enforcing per-user purchase limits
-CREATE TABLE user_sale_counts (
-    id SERIAL PRIMARY KEY,
-    user_id VARCHAR(50) NOT NULL,
-    sale_id INTEGER NOT NULL REFERENCES sales(id),
-    purchase_count INTEGER NOT NULL DEFAULT 0,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    
-    -- Constraints
-    CONSTRAINT chk_purchase_count CHECK (purchase_count >= 0 AND purchase_count <= 10),
-    CONSTRAINT uniq_user_sale UNIQUE (user_id, sale_id)
-);
-
 -- Purchases table for completed transactions
 CREATE TABLE purchases (
     id SERIAL PRIMARY KEY,
@@ -76,9 +62,6 @@ CREATE INDEX CONCURRENTLY idx_sales_active_time ON sales(active, start_time DESC
 
 -- Index for checkout code lookups (most frequent operation)
 CREATE UNIQUE INDEX CONCURRENTLY idx_checkout_code ON checkout_attempts(code);
-
--- Index for user purchase tracking
-CREATE INDEX CONCURRENTLY idx_user_sale_purchases ON user_sale_counts(user_id, sale_id);
 
 -- Index for checkout attempts by sale and user (for analytics)
 CREATE INDEX CONCURRENTLY idx_checkout_sale_user ON checkout_attempts(sale_id, user_id);
@@ -112,7 +95,3 @@ CREATE TRIGGER update_sales_updated_at
 CREATE TRIGGER update_checkout_attempts_updated_at 
     BEFORE UPDATE ON checkout_attempts
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_user_sale_counts_updated_at 
-    BEFORE UPDATE ON user_sale_counts
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column(); 

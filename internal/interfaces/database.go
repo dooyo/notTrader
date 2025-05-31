@@ -38,11 +38,6 @@ type DatabaseInterface interface {
 	CreateCheckout(ctx context.Context, attempt *models.CheckoutAttempt) error
 	GetCheckoutByCode(ctx context.Context, code string) (*models.CheckoutAttempt, error)
 
-	// User purchase tracking
-	GetUserSaleCount(ctx context.Context, userID string, saleID int) (*models.UserSaleCount, error)
-	IncrementUserSaleCount(ctx context.Context, userID string, saleID int) error
-	CreateUserSaleCount(ctx context.Context, userID string, saleID int) error
-
 	// Purchase operations
 	CreatePurchase(ctx context.Context, purchase *models.Purchase) error
 	UpdateCheckout(ctx context.Context, checkout *models.Checkout) error
@@ -62,8 +57,6 @@ type TxInterface interface {
 	CreateCheckoutAttempt(ctx context.Context, attempt *models.CheckoutAttempt) error
 	GetCheckoutAttemptByCode(ctx context.Context, code string) (*models.CheckoutAttempt, error)
 	UpdateCheckoutAttemptPurchased(ctx context.Context, code string) error
-	GetUserSaleCount(ctx context.Context, userID string, saleID int) (*models.UserSaleCount, error)
-	IncrementUserSaleCount(ctx context.Context, userID string, saleID int) error
 }
 
 // RedisInterface defines the contract for Redis operations

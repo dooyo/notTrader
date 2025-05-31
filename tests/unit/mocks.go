@@ -167,7 +167,6 @@ func (m *MockItemService) AddItem(id string, item *models.Item) {
 type MockDatabaseInterface struct {
 	sales        map[int]*models.Sale
 	checkouts    map[string]*models.CheckoutAttempt
-	userCounts   map[string]*models.UserSaleCount
 	purchases    map[int]*models.Purchase
 	shouldError  bool
 	nextSaleID   int
@@ -179,7 +178,6 @@ func NewMockDatabase() *MockDatabaseInterface {
 	return &MockDatabaseInterface{
 		sales:      make(map[int]*models.Sale),
 		checkouts:  make(map[string]*models.CheckoutAttempt),
-		userCounts: make(map[string]*models.UserSaleCount),
 		purchases:  make(map[int]*models.Purchase),
 		nextSaleID: 1,
 		nextPurchaseID: 1,
@@ -293,44 +291,6 @@ func (m *MockDatabaseInterface) GetCheckoutByCode(ctx context.Context, code stri
 	return m.GetCheckoutAttemptByCode(ctx, code)
 }
 
-// User purchase tracking
-func (m *MockDatabaseInterface) GetUserSaleCount(ctx context.Context, userID string, saleID int) (*models.UserSaleCount, error) {
-	if m.shouldError {
-		return nil, errors.New("mock database error")
-	}
-	key := userID + "_" + string(rune(saleID))
-	count, exists := m.userCounts[key]
-	if !exists {
-		return nil, nil
-	}
-	return count, nil
-}
-
-func (m *MockDatabaseInterface) IncrementUserSaleCount(ctx context.Context, userID string, saleID int) error {
-	if m.shouldError {
-		return errors.New("mock database error")
-	}
-	key := userID + "_" + string(rune(saleID))
-	if count, exists := m.userCounts[key]; exists {
-		count.PurchaseCount++
-	}
-	return nil
-}
-
-func (m *MockDatabaseInterface) CreateUserSaleCount(ctx context.Context, userID string, saleID int) error {
-	if m.shouldError {
-		return errors.New("mock database error")
-	}
-	key := userID + "_" + string(rune(saleID))
-	m.userCounts[key] = &models.UserSaleCount{
-		UserID:        userID,
-		SaleID:        saleID,
-		PurchaseCount: 1,
-		CreatedAt:     time.Now(),
-	}
-	return nil
-}
-
 // Purchase operations
 func (m *MockDatabaseInterface) CreatePurchase(ctx context.Context, purchase *models.Purchase) error {
 	if m.shouldError {
@@ -385,14 +345,6 @@ func (t *MockTx) GetCheckoutAttemptByCode(ctx context.Context, code string) (*mo
 
 func (t *MockTx) UpdateCheckoutAttemptPurchased(ctx context.Context, code string) error {
 	return t.db.UpdateCheckoutAttemptPurchased(ctx, code)
-}
-
-func (t *MockTx) GetUserSaleCount(ctx context.Context, userID string, saleID int) (*models.UserSaleCount, error) {
-	return t.db.GetUserSaleCount(ctx, userID, saleID)
-}
-
-func (t *MockTx) IncrementUserSaleCount(ctx context.Context, userID string, saleID int) error {
-	return t.db.IncrementUserSaleCount(ctx, userID, saleID)
 }
 
 // MockRedisInterface implements interfaces.RedisInterface

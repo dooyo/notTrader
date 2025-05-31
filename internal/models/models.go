@@ -30,16 +30,6 @@ type CheckoutAttempt struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// UserSaleCount tracks per-user purchase counts per sale
-type UserSaleCount struct {
-	ID           int       `json:"id"`
-	UserID       string    `json:"user_id"`
-	SaleID       int       `json:"sale_id"`
-	PurchaseCount int      `json:"purchase_count"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
-}
-
 // Item represents a purchasable item (generated at runtime)
 type Item struct {
 	ID          string    `json:"id"`
